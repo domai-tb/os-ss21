@@ -51,6 +51,7 @@ int read_command(size_t* parameter_number, char*** command, char* command_line)
 		return EXIT_FAILURE;
 	} 
 	else {
+		// reading words from command_line 
 		token = strtok(command_line, delimit);
    		while(token != NULL) 
 		{
