@@ -1,7 +1,9 @@
 /* 
 
 	DAS WILL EINFACH NICHT FUNKTIONIEREN....
-
+	Rouven: Ich habe 2 Debug prints eingefügt(mit TEMP DEBUG hinter der Zeile markiert)
+	Es scheint so das bei dem verlassen der Read fkt etwas nicht richtig übertragen wird.
+	Könnte auch ein fehler bei der speicherverwaltung sein... Keinen Plan
 */
 
 
@@ -95,7 +97,7 @@ int execute_command(char*** command, size_t* parameter_number)
 	for(int i = 0; i < *parameter_number; i++)
 		parameters[i] = (*command)[i];
 	parameters[*parameter_number] = NULL;
-
+	
 	pid_t pid = fork();
 	if(pid == -1) {
 		fprintf(stderr, "Can't fork.\n");
@@ -183,7 +185,8 @@ int read_command(size_t* parameter_number, char*** command, char* command_line)
 	}
 
 	*parameter_number = number;
-
+	fprintf(stdout, "1. PARAMTER IN READ: %s\n", (*command)[0]);								//TEMP DEBUG
+	
 	return EXIT_SUCCESS;
 }
 
@@ -220,7 +223,8 @@ int main(int argc, char **argv)
 		if(read_command(&parameter_number, &command, command_line) == EXIT_FAILURE) {
 			return EXIT_FAILURE;	
 		}
-
+		fprintf(stdout, "1. PARAMTER AFTER READ: %s\n", command[0]);								//TEMP DEBUG
+		
 		//execute command
 		exis_status = execute_command(&command, &parameter_number);
 		if(exis_status != EXIT_SUCCESS) {
