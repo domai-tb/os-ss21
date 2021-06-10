@@ -190,7 +190,7 @@ int read_command(size_t* parameter_number, char*** command, char* command_line)
 
 /* How to use: 
 	- compile:		make -rR
-	- run:			<path>/test
+	- run:			<path>/clash
 	- type:			<name> <param 1> ... <param n>
 */
 int main(int argc, char **argv) 
