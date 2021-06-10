@@ -1,3 +1,10 @@
+/* 
+
+	DAS WILL EINFACH NICHT FUNKTIONIEREN....
+
+*/
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -9,38 +16,91 @@
 
 #define MAX_PATH_LENGTH 100
 #define MAX_COMMAND_LINE_LENGTH 100
-#define MAX_WORD_LENGTH 10
+#define MAX_WORD_LENGTH 12
 
 
 /* Execute user typed command:
 
 	Parameters:
+
 	- command:				array of parameters (<name> <param 1> ... <param n>)
 	- parameter_number:		array index 
 
 	Locals:
+	
 	- program_name:			name of program to execute
 	- pid:					PID from fork
 	- parameters:			parsed array of command for execvp syntax 
+	- wait_status:			status variable of child process
 */
-
-//  TODO: change directory not working -> fix it
-
 int execute_command(char*** command, size_t* parameter_number)
 {
+	/*  TODO's: 
+
+		- change directory not working -> fix it
+		- commandline + pid liste 
+
+	*/
 	char* program_name = (*command)[0];
-	char* parameters[*parameter_number];
-	pid_t pid = fork();
+	char* parameters[(*parameter_number)+1];
 	int wait_status;
-	
-	if(pid == -1) {
-		fprintf(stderr, "Can't fork.\n");
-		return EXIT_FAILURE;
-	}
+
+	// // parse command to execvp syntax <=> add NULL at last element
+	// for(int i = 0; i < *parameter_number; i++)
+	// 	parameters[i] = (*command)[i];
+	// parameters[*parameter_number] = NULL;
+
+	// if(strcmp(parameters[(*parameter_number)-1], "&") == 0) {
+	// 	// cut "&" from command
+	// 	parameters[(*parameter_number)-1] = " ";
+
+	// 	pid_t pid = fork();
+	// 	if(pid == -1) {
+	// 		fprintf(stderr, "Can't fork.\n");
+	// 		return EXIT_FAILURE;
+	// 	}
+	// 	if(pid == 0) {
+	// 		// child process
+	// 		if(execvp(program_name, parameters) == -1) {
+	// 			fprintf(stderr, "Could not execute program. Is the program name correct?\nSyntax: <program name> <parameter 1> ... <parameter n> \n");
+	// 			return EXIT_FAILURE;
+	// 		}
+	// 	} else {
+	// 		// parent process
+	// 		return EXIT_SUCCESS;
+	// 	}
+	// } else {
+	// 	pid_t pid = fork();
+	// 	if(pid == -1) {
+	// 		fprintf(stderr, "Can't fork.\n");
+	// 		return EXIT_FAILURE;
+	// 	}
+	// 	if(pid == 0) {
+	// 		// child process
+	// 		if(execvp(program_name, parameters) == -1) {
+	// 			fprintf(stderr, "Could not execute program. Is the program name correct?\nSyntax: <program name> <parameter 1> ... <parameter n> \n");
+	// 			return EXIT_FAILURE;
+	// 		}
+	// 	} else {
+	// 		// parent process
+	// 		wait(&wait_status);
+	// 		if(WIFEXITED(wait_status)) {
+	// 			return WEXITSTATUS(wait_status);
+	// 		}
+	// 	}
+	// }
+
+	// return EXIT_FAILURE;
 
 	for(int i = 0; i < *parameter_number; i++)
 		parameters[i] = (*command)[i];
 	parameters[*parameter_number] = NULL;
+
+	pid_t pid = fork();
+	if(pid == -1) {
+		fprintf(stderr, "Can't fork.\n");
+		return EXIT_FAILURE;
+	}
 
 	if(pid == 0) {
 		// child process
@@ -55,17 +115,21 @@ int execute_command(char*** command, size_t* parameter_number)
 			return WEXITSTATUS(wait_status);
 		}
 	}
+
+	return EXIT_FAILURE;
 }
 
 
 /* Read command from input line:
 
 	Parameters:
+
 	- parameter_number:		array index
 	- command_line:			user input
 	- command:				array of parameters (<name> <param 1> ... <param n>)
 
 	Locals:
+
 	- number:				internal array index 
 	- token:				strtok return pointer to first word
 	- delimit:				delimiters for user input -> strtok function
@@ -96,6 +160,11 @@ int read_command(size_t* parameter_number, char*** command, char* command_line)
 	token = strtok(_command_line, delimit);
 	while(token != NULL) 
 	{
+		if(strlen(token)+2 >= MAX_WORD_LENGTH) {
+			fprintf(stderr, "Check your command length!");
+			return EXIT_FAILURE;
+		}
+
 		*command = (char**) realloc(*command, (number + 1) * sizeof(*(*command)));
 		if(*command == NULL) {
 			fprintf(stderr, "Memory allocation goes wrong.\n");
@@ -137,19 +206,18 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	// get working directory
-	if (getcwd(working_dir, sizeof(working_dir)) == NULL) {
-		fprintf(stderr, "Can't read working directory.\n");
-		return EXIT_FAILURE;
-	}
-
 	// input loop
 	while(true)
 	{
+		// get working directory
+		if (getcwd(working_dir, sizeof(working_dir)) == NULL) {
+			fprintf(stderr, "Can't read working directory.\n");
+			return EXIT_FAILURE;
+		}
+
 		// read command line 
 		fprintf(stdout, "\n%s: ", working_dir);
 		if(read_command(&parameter_number, &command, command_line) == EXIT_FAILURE) {
-			fprintf(stderr, "Can't read input.\n");
 			return EXIT_FAILURE;	
 		}
 
@@ -168,12 +236,13 @@ int main(int argc, char **argv)
 		// 	free(command[i]);								// invalid pointer ... ?
 		// }
 		//free(command);
+
+		if(fflush(stdout) == EOF) {
+			fprintf(stderr, "Output flushing goes wrong.\n");
+			return EXIT_FAILURE;
+		}
 	}
 
-	if(fflush(stdout) == EOF) {
-		fprintf(stderr, "Output flushing goes wrong.\n");
-		return EXIT_FAILURE;
-	}
-
+	// exit dealloc memory
 	return EXIT_SUCCESS;
 }

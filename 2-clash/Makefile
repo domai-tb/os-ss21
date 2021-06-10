@@ -5,4 +5,4 @@ all: clash
 clean:
 
 clash: clash.c
-	gcc $(OPTIONS) clash.c -o test
+	gcc $(OPTIONS) clash.c -o clash
