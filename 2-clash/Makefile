@@ -1,8 +1,11 @@
 OPTIONS = -std=c11 -pedantic -Wall -Werror -D_XOPEN_SOURCE=700
 
+.PHONY: all
 all: clash
 
-clean:
+clash: clash-2.c
+	gcc $(OPTIONS) clash-2.c .clash/plist.c -o clash
 
-clash: clash.c
-	gcc $(OPTIONS) clash.c -o clash
+.PHONY: clean
+clean:
+	rm clash

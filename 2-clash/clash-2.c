@@ -1,7 +1,12 @@
 /* TODO-List: 
 
-    - PID Liste (.clash/plist)
-    - show background processes
+    - show background processes:
+
+    "jobs" zeigt aktuell nur den ersten Background Prozess an, nicht aber alle.
+    Wenn man den Befehl mehrfach hintereinander ausführt, arbeitet er die 
+    List ab.
+
+    --> While Loop in plist.c 
 
 */
 
@@ -14,8 +19,11 @@
 #include <string.h>	
 #include <stdbool.h>
 
+#include ".clash/plist.h"
+
 
 #define MAX_PATH_LENGTH 100
+#define MAX_LINE_LENGTH 1337
 #define BUFFER_SIZE 128
 #define TOKEN_BUFFER_SIZE 10
 
@@ -87,6 +95,48 @@ int change_directory(char* directory)
 }
 
 
+/* Show all inputed commands:
+
+    Parameters:
+    
+    - 
+
+    Locals:
+    -
+
+    Return:
+
+    - If Fail:          exit(EXIT_FAILURE)
+    - If Success:       EXIT_SUCCESS
+
+*/
+int jobs(pid_t pid, const char* cmdline)
+{
+    int status;
+    waitpid(pid, &status, WUNTRACED);
+	printf("[%d]: '%s', Exisstatus: %d\n", pid, cmdline, status);
+
+    size_t buffer_size = strlen(cmdline);
+    char* command_line_buffer = (char*) malloc(buffer_size * sizeof(char));
+    if(command_line_buffer == NULL) {
+        fprintf(stderr, "Memory allocation goes wrong.\n");
+        exit(EXIT_FAILURE);
+    }
+    strcpy(command_line_buffer, cmdline);
+
+    removeElement(pid, command_line_buffer, buffer_size);
+
+    free(command_line_buffer);
+    return EXIT_SUCCESS;
+}
+
+int show_background_processes()
+{
+    walkList(jobs);
+    return EXIT_SUCCESS;
+}
+
+
 /* Try to find a '&' at the end of user input:
 
     Parameters:
@@ -101,6 +151,7 @@ int change_directory(char* directory)
 
     - If Fail:
     - If Success:
+
 */
 bool is_background(char* line)
 {
@@ -129,6 +180,7 @@ bool is_background(char* line)
     - If Fail:    EXIT_FAILURE
     - If Succes:  char* command_line
     - If EOF:     exit program
+
 */
 char* read_command()
 {
@@ -161,7 +213,7 @@ char* read_command()
         index++;
 
         // Realloc, if buffer size exceeded
-        if (index >= buffer_size)
+        if (index >= buffer_size && index <= MAX_LINE_LENGTH)
         {
             buffer_size += BUFFER_SIZE;
             command_line = (char*) realloc(command_line, buffer_size);
@@ -191,7 +243,6 @@ char* read_command()
     
     - If Fail:          exit(EXIT_FAILURE)
     - If Succes:        char** parameters
-
 
 */
 char** get_parameters(char* line, bool type)
@@ -241,10 +292,10 @@ char** get_parameters(char* line, bool type)
 
     - parameters:       parsed user input
     - type:             background process? 
+    - _pid:             PID of forked process
 
     Locals:
 
-    - pid:              PID of forked process
     - wait_status:      status of child process
 
     Return:             
@@ -252,21 +303,22 @@ char** get_parameters(char* line, bool type)
     - If Fail:          EXIT_FAILURE
     - If Succes:        int wait_status
 */
-int execute_command(char** parameters, bool type)
+int execute_command(char** parameters, bool type, pid_t* _pid)
 {
-    pid_t pid;
     int wait_status;
 
     if(strcmp(parameters[0], "cd") == 0) 
         return change_directory(parameters[1]);
+    else if(strcmp(parameters[0], "jobs") == 0)
+        return show_background_processes();
 
-    pid = fork();
-    if (pid == -1) {
+    *_pid = fork();
+    if (*_pid == -1) {
         // Error forking
         fprintf(stderr, "Unable to fork.\n");
         exit(EXIT_FAILURE);
     } 
-    else if (pid == 0) {
+    else if (*_pid == 0) {
         // Child process:   Execute command
         if (execvp(parameters[0], parameters) == -1)
             fprintf(stderr, "Unable to execute command.\n");
@@ -274,10 +326,11 @@ int execute_command(char** parameters, bool type)
     } else {
         // Parent process:  Wait for child
         if(type) {
-            return EXIT_SUCCESS;
+            // internal statuscode for not waiting
+            return -42;
         } else {
             do {
-                pid = waitpid(pid, &wait_status, WUNTRACED);
+                *_pid = waitpid(*_pid, &wait_status, WUNTRACED);
             } while (!WIFEXITED(wait_status) && !WIFSIGNALED(wait_status));
         }
     }
@@ -300,6 +353,7 @@ int execute_command(char** parameters, bool type)
     - parameters:       array of single words in user input
     - status:           status of processes; abort programm at error 
     - job_type:         background process?   
+    - pid:              PID of Backgroundprocess
 */
 int main(int argc, char **argv)
 {
@@ -309,6 +363,7 @@ int main(int argc, char **argv)
     char** parameters;
     int status;
     bool job_type = false;
+    pid_t pid;
 
     // input loop
     do {
@@ -318,6 +373,10 @@ int main(int argc, char **argv)
 
         // read user input
         command_line = read_command();
+
+        // skip if no command typed
+        if((strcmp(command_line, "") && strcmp(command_line, " ")) == 0) 
+            continue;
 
         // copy user input (because strtok)
         _line = (char*) malloc(strlen(command_line) * sizeof(char));
@@ -333,17 +392,22 @@ int main(int argc, char **argv)
         // get parameters from user input
         parameters = get_parameters(_line, job_type);
 
-        // execute command and return status code
-        status = execute_command(parameters, job_type);
-        fprintf(stdout, "Exisstatus [ %s ] = %d\n", command_line, status);
+        /* execute command and return status code.
+           status code -42 target the background process. */
+        status = execute_command(parameters, job_type, &pid);
+        if(status == -42)
+            // write pid and command_line in list
+            insertElement(pid, command_line);
+        else 
+            fprintf(stdout, "Exisstatus [ %s ] = %d\n", command_line, status);
 
         // free allocated memory
-        free(_line);
         free(working_dir);
         free(command_line);
+        free(_line);
         free(parameters);
     // Stop at error
-    } while (status == 0);
+    } while (true);
 
     return EXIT_SUCCESS;
 }
