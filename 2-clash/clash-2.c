@@ -1,16 +1,13 @@
 /* TODO-List: 
 
-    - show background processes:
-
-    "jobs" zeigt aktuell nur den ersten Background Prozess an, nicht aber alle.
-    Wenn man den Befehl mehrfach hintereinander ausführt, arbeitet er die 
-    List ab.
-
-    --> While Loop in plist.c 
-    Rouven: ich habe in der jobs fkt. einen Teil auskommentiert, der mir sinnlos erscheint, jetzt geht jobs
-
-	in der Aufgabe wird für delimit nur ' ' und '\t' angegeben. Ist also mehr als
-	eigentlich muss. ~Zeile 252
+    - cleanup von Zombies bei jedem command
+	- #command >= 1337 noch fehlerhaft("corrupted top size")
+	
+    Rouven: ich habe in der jobs fkt. einen Teil auskommentiert, der mir sinnlos erscheint, jetzt läuft jobs
+	
+	Anmerkung: in der Aufgabe wird für delimit nur ' ' und '\t' angegeben. Ist also mehr gesplitted als
+	eigentlich muss. ~Zeile 250
+	
 */
 
 
@@ -29,7 +26,7 @@
 #define MAX_LINE_LENGTH 1337
 #define BUFFER_SIZE 128
 #define TOKEN_BUFFER_SIZE 10
-
+#define STATUS_BACKGROUND -42 // internal statuscode for not waiting
 
 /* Get working directory:
 
@@ -329,8 +326,7 @@ int execute_command(char** parameters, bool type, pid_t* _pid)
     } else {
         // Parent process:  Wait for child
         if(type) {
-            // internal statuscode for not waiting
-            return -42;
+            return STATUS_BACKGROUND;
         } else {
             do {
                 *_pid = waitpid(*_pid, &wait_status, WUNTRACED);
@@ -398,7 +394,7 @@ int main(int argc, char **argv)
         /* execute command and return status code.
            status code -42 target the background process. */
         status = execute_command(parameters, job_type, &pid);
-        if(status == -42)
+        if(status == STATUS_BACKGROUND)
             // write pid and command_line in list
             insertElement(pid, command_line);
         else 
