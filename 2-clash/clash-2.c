@@ -7,7 +7,10 @@
     List ab.
 
     --> While Loop in plist.c 
+    Rouven: ich habe in der jobs fkt. einen Teil auskommentiert, der mir sinnlos erscheint, jetzt geht jobs
 
+	in der Aufgabe wird für delimit nur ' ' und '\t' angegeben. Ist also mehr als
+	eigentlich muss. ~Zeile 252
 */
 
 
@@ -116,7 +119,7 @@ int jobs(pid_t pid, const char* cmdline)
     waitpid(pid, &status, WUNTRACED);
 	printf("[%d]: '%s', Exisstatus: %d\n", pid, cmdline, status);
 
-    size_t buffer_size = strlen(cmdline);
+    /*size_t buffer_size = strlen(cmdline);
     char* command_line_buffer = (char*) malloc(buffer_size * sizeof(char));
     if(command_line_buffer == NULL) {
         fprintf(stderr, "Memory allocation goes wrong.\n");
@@ -126,7 +129,7 @@ int jobs(pid_t pid, const char* cmdline)
 
     removeElement(pid, command_line_buffer, buffer_size);
 
-    free(command_line_buffer);
+    free(command_line_buffer);*/
     return EXIT_SUCCESS;
 }
 
