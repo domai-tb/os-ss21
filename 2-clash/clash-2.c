@@ -2,12 +2,12 @@
 
     - cleanup von Zombies bei jedem command
 	- #command >= 1337 noch fehlerhaft("corrupted top size")
-	
+	(- walkList callback return nutzen)
+
     Rouven: ich habe in der jobs fkt. einen Teil auskommentiert, der mir sinnlos erscheint, jetzt läuft jobs
-	
+
 	Anmerkung: in der Aufgabe wird für delimit nur ' ' und '\t' angegeben. Ist also mehr gesplitted als
 	eigentlich muss. ~Zeile 250
-	
 */
 
 
@@ -110,32 +110,11 @@ int change_directory(char* directory)
     - If Success:       EXIT_SUCCESS
 
 */
-int jobs(pid_t pid, const char* cmdline)
+int print_job_info(pid_t pid, const char* cmdline)
 {
-    int status;
-    waitpid(pid, &status, WUNTRACED);
-	printf("[%d]: '%s', Exisstatus: %d\n", pid, cmdline, status);
-
-    /*size_t buffer_size = strlen(cmdline);
-    char* command_line_buffer = (char*) malloc(buffer_size * sizeof(char));
-    if(command_line_buffer == NULL) {
-        fprintf(stderr, "Memory allocation goes wrong.\n");
-        exit(EXIT_FAILURE);
-    }
-    strcpy(command_line_buffer, cmdline);
-
-    removeElement(pid, command_line_buffer, buffer_size);
-
-    free(command_line_buffer);*/
+	printf("[%d]: '%s'\n", pid, cmdline);
     return EXIT_SUCCESS;
 }
-
-int show_background_processes()
-{
-    walkList(jobs);
-    return EXIT_SUCCESS;
-}
-
 
 /* Try to find a '&' at the end of user input:
 
@@ -249,7 +228,7 @@ char** get_parameters(char* line, bool type)
 {
     int buffer_size = TOKEN_BUFFER_SIZE, index = 0;
     char* token;
-    char delimit[6] = " \t\r\n\v\f";
+    char delimit[3] = " \t\n";
 
     char** parameters = (char**) malloc(buffer_size * sizeof(char*));
     if (parameters == NULL) {
@@ -309,8 +288,10 @@ int execute_command(char** parameters, bool type, pid_t* _pid)
 
     if(strcmp(parameters[0], "cd") == 0) 
         return change_directory(parameters[1]);
-    else if(strcmp(parameters[0], "jobs") == 0)
-        return show_background_processes();
+    else if(strcmp(parameters[0], "jobs") == 0) {
+		walkList(print_job_info);
+        return EXIT_SUCCESS;
+	}
 
     *_pid = fork();
     if (*_pid == -1) {
@@ -337,6 +318,37 @@ int execute_command(char** parameters, bool type, pid_t* _pid)
     return wait_status;
 }
 
+/* find, print and remove all Zombies in plist
+
+    Parameters:
+
+    Locals:
+
+    - wstatus:      status of process
+    - w:            process id
+
+    Return:             
+    
+    - If Fail:          EXIT_FAILURE
+    - If Succes:        EXIT_SUCCESS
+*/
+int cleanup_zombies() {
+	int wstatus;
+	int w = waitpid(-1, &wstatus, WNOHANG);
+	while(w != 0 && w != -1) {
+		char pid_cmd[MAX_LINE_LENGTH];
+		if(WIFEXITED(wstatus))
+		{
+			if(removeElement(w, pid_cmd, MAX_LINE_LENGTH) == -1) {
+				fprintf(stderr, "Unable to remove Element[%d].\n", w);
+				return EXIT_FAILURE;
+			}
+			fprintf(stdout, "Exisstatus [ %s ] = %d\n", pid_cmd, wstatus);
+		}	
+		w = waitpid(-1, &wstatus, WNOHANG);
+	}
+	return EXIT_SUCCESS;
+}
 
 /* How to use: 
 
@@ -360,9 +372,9 @@ int main(int argc, char **argv)
     char* _line;
     char* working_dir;
     char** parameters;
-    int status;
     bool job_type = false;
     pid_t pid;
+	int status;
 
     // input loop
     do {
@@ -394,11 +406,13 @@ int main(int argc, char **argv)
         /* execute command and return status code.
            status code -42 target the background process. */
         status = execute_command(parameters, job_type, &pid);
-        if(status == STATUS_BACKGROUND)
-            // write pid and command_line in list
-            insertElement(pid, command_line);
-        else 
-            fprintf(stdout, "Exisstatus [ %s ] = %d\n", command_line, status);
+        if(status != STATUS_BACKGROUND) {
+			fprintf(stdout, "Exisstatus [ %s ] = %d\n", command_line, status);
+		}else
+			insertElement(pid, command_line);
+        
+        //cleanup zombies
+		cleanup_zombies();
 
         // free allocated memory
         free(working_dir);
