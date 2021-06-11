@@ -1,13 +1,14 @@
 /* TODO-List: 
 
-    - cleanup von Zombies bei jedem command
 	- #command >= 1337 noch fehlerhaft("corrupted top size")
 	(- walkList callback return nutzen)
 
-    Rouven: ich habe in der jobs fkt. einen Teil auskommentiert, der mir sinnlos erscheint, jetzt läuft jobs
+    Rouven: 
+    * ich habe in der jobs fkt. einen Teil auskommentiert, der mir sinnlos erscheint, jetzt läuft jobs
+    * 
 
 	Anmerkung: in der Aufgabe wird für delimit nur ' ' und '\t' angegeben. Ist also mehr gesplitted als
-	eigentlich muss. ~Zeile 250
+	eigentlich muss. EDIT: habe es zu ' \t\n' geändert ~Zeile 230
 */
 
 
@@ -48,7 +49,7 @@ char* get_working_dir()
 {
     char buffer[MAX_PATH_LENGTH];  
 
-    if (getcwd(buffer, sizeof(buffer)) == NULL) {
+    if(getcwd(buffer, sizeof(buffer)) == NULL) {
 		fprintf(stderr, "Can't read working directory.\n");
 		exit(EXIT_FAILURE);
 	}
@@ -84,13 +85,11 @@ int change_directory(char* directory)
     if(directory == NULL) {
         fprintf(stderr, "Syntax: cd <path>\n");
         return EXIT_FAILURE;
-    } else {
-        if(chdir(directory) != EXIT_SUCCESS) {
-            fprintf(stderr, "Unable to change directory.");
-            return EXIT_FAILURE;
-        }
     }
-
+    else if(chdir(directory) != EXIT_SUCCESS) {
+		fprintf(stderr, "Unable to change directory.");
+		return EXIT_FAILURE;
+    }
     return EXIT_SUCCESS;
 }
 
@@ -135,11 +134,7 @@ int print_job_info(pid_t pid, const char* cmdline)
 bool is_background(char* line)
 {
     size_t length = strlen(line);
-
-    if(line[length-1] == '&')
-        return true;
-    else 
-        return false;  
+    return line[length-1] == '&';
 }
 
 /* Reading the command from user input:
@@ -171,8 +166,7 @@ char* read_command()
         exit(EXIT_FAILURE);
     }
 
-    while(true)
-    {
+    while(true) {
         // Read a character
         c = getchar();
 
@@ -187,16 +181,16 @@ char* read_command()
             exit(EXIT_SUCCESS);
         }
         // write character in buffer
-        else
+        else {
             command_line[index] = c;
+		}
         index++;
 
         // Realloc, if buffer size exceeded
-        if (index >= buffer_size && index <= MAX_LINE_LENGTH)
-        {
+        if(index >= buffer_size && index <= MAX_LINE_LENGTH) {
             buffer_size += BUFFER_SIZE;
             command_line = (char*) realloc(command_line, buffer_size);
-            if (command_line == NULL) {
+            if(command_line == NULL) {
                 fprintf(stderr, "Memory allocation goes wrong.\n");
                 exit(EXIT_FAILURE);
             }
@@ -231,22 +225,21 @@ char** get_parameters(char* line, bool type)
     char delimit[3] = " \t\n";
 
     char** parameters = (char**) malloc(buffer_size * sizeof(char*));
-    if (parameters == NULL) {
+    if(parameters == NULL) {
         fprintf(stderr, "Memory allocation goes wrong.\n");
         exit(EXIT_FAILURE);
     }
 
     // parse (user) input into parameter array
     token = strtok(line, delimit);
-    while (token != NULL) {
+    while(token != NULL) {
         parameters[index] = token;
         index++;
 
-        if (index >= buffer_size) 
-        {
+        if(index >= buffer_size) {
             buffer_size += TOKEN_BUFFER_SIZE;
             parameters = realloc(parameters, buffer_size * sizeof(char*));
-            if (parameters == NULL) {
+            if(parameters == NULL) {
                 fprintf(stderr, "Memory allocation goes wrong.\n");
                 exit(EXIT_FAILURE);
             }
@@ -256,11 +249,12 @@ char** get_parameters(char* line, bool type)
     }
 
     // if background process, overwrite '&'
-    if(type)
+    if(type) {
         parameters[index-1] = NULL;
-    else
+	}
+	else {
         parameters[index] = NULL;
-
+	}
     return parameters;
 }
 
@@ -286,8 +280,9 @@ int execute_command(char** parameters, bool type, pid_t* _pid)
 {
     int wait_status;
 
-    if(strcmp(parameters[0], "cd") == 0) 
+    if(strcmp(parameters[0], "cd") == 0) {
         return change_directory(parameters[1]);
+	}
     else if(strcmp(parameters[0], "jobs") == 0) {
 		walkList(print_job_info);
         return EXIT_SUCCESS;
@@ -304,11 +299,13 @@ int execute_command(char** parameters, bool type, pid_t* _pid)
         if (execvp(parameters[0], parameters) == -1)
             fprintf(stderr, "Unable to execute command.\n");
         return EXIT_FAILURE;
-    } else {
+    } 
+    else {
         // Parent process:  Wait for child
         if(type) {
             return STATUS_BACKGROUND;
-        } else {
+        } 
+        else {
             do {
                 *_pid = waitpid(*_pid, &wait_status, WUNTRACED);
             } while (!WIFEXITED(wait_status) && !WIFSIGNALED(wait_status));
@@ -332,13 +329,14 @@ int execute_command(char** parameters, bool type, pid_t* _pid)
     - If Fail:          EXIT_FAILURE
     - If Succes:        EXIT_SUCCESS
 */
-int cleanup_zombies() {
+int cleanup_zombies() 
+{
 	int wstatus;
 	int w = waitpid(-1, &wstatus, WNOHANG);
+	
 	while(w != 0 && w != -1) {
 		char pid_cmd[MAX_LINE_LENGTH];
-		if(WIFEXITED(wstatus))
-		{
+		if(WIFEXITED(wstatus)) {
 			if(removeElement(w, pid_cmd, MAX_LINE_LENGTH) == -1) {
 				fprintf(stderr, "Unable to remove Element[%d].\n", w);
 				return EXIT_FAILURE;
@@ -386,8 +384,9 @@ int main(int argc, char **argv)
         command_line = read_command();
 
         // skip if no command typed
-        if((strcmp(command_line, "") && strcmp(command_line, " ")) == 0) 
+        if((strcmp(command_line, "") && strcmp(command_line, " ")) == 0) {
             continue;
+		}
 
         // copy user input (because strtok)
         _line = (char*) malloc(strlen(command_line) * sizeof(char));
@@ -408,8 +407,10 @@ int main(int argc, char **argv)
         status = execute_command(parameters, job_type, &pid);
         if(status != STATUS_BACKGROUND) {
 			fprintf(stdout, "Exisstatus [ %s ] = %d\n", command_line, status);
-		}else
+		}
+		else {
 			insertElement(pid, command_line);
+		}
         
         //cleanup zombies
 		cleanup_zombies();
