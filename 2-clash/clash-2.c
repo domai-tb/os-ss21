@@ -1,7 +1,6 @@
 /* TODO-List: 
 
 	(- walkList callback return nutzen)
-	- leeres kommando mit mehreren Leerzeichen
 
     Tests:
     echo abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789
@@ -155,7 +154,9 @@ bool is_background(char* line)
 */
 int read_command(char** command_line)
 {
-    int index = 0, c, buffer_size = BUFFER_SIZE;
+    int index = 0;
+    int c;
+    int buffer_size = BUFFER_SIZE;
 
     *command_line = (char*) malloc(sizeof(char) * buffer_size);
     if(*command_line == NULL) {
@@ -172,15 +173,26 @@ int read_command(char** command_line)
             (*command_line)[index] = '\0';
             // Return failure, if line is too long
 			if(index >= MAX_LINE_LENGTH) {
+				fprintf(stderr, "Input line too long.\n");
+				return EXIT_FAILURE;
+			}
+			if(index == 0) {
 				return EXIT_FAILURE;
 			}
             return EXIT_SUCCESS;
-        } 
+        }
         // Exit at EOF
-        else if(c == EOF) {
+        if(c == EOF) {
             fprintf(stdout, "exit\n");
             exit(EXIT_SUCCESS);
         }
+        // Ignore leading spaces
+        if(index == 0) {
+			if(c == ' ' || c == '\t') {
+				continue;
+			}
+		}
+        
         // Write character in buffer
         (*command_line)[index] = c;
         index++;
@@ -384,13 +396,8 @@ int main(int argc, char **argv)
 
         // read user input
         if(read_command(&command_line) == EXIT_FAILURE) {
-			// skip if command too long
-			fprintf(stderr, "Input line too long.\n");
+			// skip if reading command fails
 			continue;
-		}
-        // skip if no command typed
-        if((strcmp(command_line, "") && strcmp(command_line, " ")) == 0) {
-            continue;
 		}
 
         // copy user input (because strtok)
