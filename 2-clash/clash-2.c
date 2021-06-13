@@ -1,14 +1,11 @@
 /* TODO-List: 
 
-	- #command >= 1337 noch fehlerhaft("corrupted top size")
 	(- walkList callback return nutzen)
+	- leeres kommando mit mehreren Leerzeichen
 
-    Rouven: 
-    * ich habe in der jobs fkt. einen Teil auskommentiert, der mir sinnlos erscheint, jetzt läuft jobs
-    * 
-
-	Anmerkung: in der Aufgabe wird für delimit nur ' ' und '\t' angegeben. Ist also mehr gesplitted als
-	eigentlich muss. EDIT: habe es zu ' \t\n' geändert ~Zeile 230
+    Tests:
+    echo abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789
+	sleep 10 &
 */
 
 
@@ -156,12 +153,12 @@ bool is_background(char* line)
     - If EOF:     exit program
 
 */
-char* read_command()
+int read_command(char** command_line)
 {
     int index = 0, c, buffer_size = BUFFER_SIZE;
 
-    char* command_line = (char*) malloc(sizeof(char) * buffer_size);
-    if(command_line == NULL) {
+    *command_line = (char*) malloc(sizeof(char) * buffer_size);
+    if(*command_line == NULL) {
         fprintf(stderr, "Memory allocation goes wrong.\n");
         exit(EXIT_FAILURE);
     }
@@ -172,29 +169,32 @@ char* read_command()
 
         // Replace '\n' with a null character and return.
         if(c == '\n') {
-            command_line[index] = '\0';
-            return command_line;
+            (*command_line)[index] = '\0';
+            // Return failure, if line is too long
+			if(index >= MAX_LINE_LENGTH) {
+				return EXIT_FAILURE;
+			}
+            return EXIT_SUCCESS;
         } 
         // Exit at EOF
         else if(c == EOF) {
             fprintf(stdout, "exit\n");
             exit(EXIT_SUCCESS);
         }
-        // write character in buffer
-        else {
-            command_line[index] = c;
-		}
+        // Write character in buffer
+        (*command_line)[index] = c;
         index++;
-
+		
         // Realloc, if buffer size exceeded
-        if(index >= buffer_size && index <= MAX_LINE_LENGTH) {
+        if(index >= buffer_size) {
             buffer_size += BUFFER_SIZE;
-            command_line = (char*) realloc(command_line, buffer_size);
+            *command_line = (char*) realloc(*command_line, buffer_size);
             if(command_line == NULL) {
                 fprintf(stderr, "Memory allocation goes wrong.\n");
                 exit(EXIT_FAILURE);
             }
         }
+        
     }
 }
 
@@ -220,9 +220,10 @@ char* read_command()
 */
 char** get_parameters(char* line, bool type)
 {
-    int buffer_size = TOKEN_BUFFER_SIZE, index = 0;
+    int buffer_size = TOKEN_BUFFER_SIZE;
+    int index = 0;
     char* token;
-    char delimit[3] = " \t\n";
+    char delimit[6] = " \t\r\n\v";
 
     char** parameters = (char**) malloc(buffer_size * sizeof(char*));
     if(parameters == NULL) {
@@ -255,6 +256,7 @@ char** get_parameters(char* line, bool type)
 	else {
         parameters[index] = NULL;
 	}
+
     return parameters;
 }
 
@@ -297,7 +299,7 @@ int execute_command(char** parameters, bool type, pid_t* _pid)
     else if (*_pid == 0) {
         // Child process:   Execute command
         if (execvp(parameters[0], parameters) == -1)
-            fprintf(stderr, "Unable to execute command.\n");
+            fprintf(stderr, "exec: No such file or directory\n");
         return EXIT_FAILURE;
     } 
     else {
@@ -381,8 +383,11 @@ int main(int argc, char **argv)
         fprintf(stdout, "%s: ", working_dir);
 
         // read user input
-        command_line = read_command();
-
+        if(read_command(&command_line) == EXIT_FAILURE) {
+			// skip if command too long
+			fprintf(stderr, "Input line too long.\n");
+			continue;
+		}
         // skip if no command typed
         if((strcmp(command_line, "") && strcmp(command_line, " ")) == 0) {
             continue;
