@@ -37,23 +37,23 @@
 
     Return:
 
-    - If Fail:    EXIT_FAILURE
+    - If Fail:    exit(EXIT_FAILURE)
     - If Succes:  char* working_dir
 
 */
-char* get_working_dir() 
+static char* get_working_dir() 
 {
     char buffer[MAX_PATH_LENGTH];  
 
     if(getcwd(buffer, sizeof(buffer)) == NULL) {
-		fprintf(stderr, "Can't read working directory.\n");
+		perror("Can't read working directory.\n");
 		exit(EXIT_FAILURE);
 	}
 
     char* working_dir = NULL;
     working_dir = (char*) malloc(strlen(buffer) * sizeof(char));
     if(working_dir == NULL) {
-        fprintf(stderr, "Memory allocation goes wrong.\n");
+        perror("Memory allocation goes wrong.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -76,14 +76,14 @@ char* get_working_dir()
     - If Success:       EXIT_SUCCESS
 
 */
-int change_directory(char* directory)
+static int change_directory(char* directory)
 {
     if(directory == NULL) {
-        fprintf(stderr, "Syntax: cd <path>\n");
+        perror("Syntax: cd <path>\n");
         return EXIT_FAILURE;
     }
     else if(chdir(directory) != EXIT_SUCCESS) {
-		fprintf(stderr, "Unable to change directory.");
+		perror("Unable to change directory.");
 		return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
@@ -94,18 +94,19 @@ int change_directory(char* directory)
 
     Parameters:
     
-    - 
+    - pid:              PID of Process
+    - cmdline           Command of Process
 
     Locals:
     -
 
     Return:
 
-    - If Fail:          exit(EXIT_FAILURE)
+    - If Fail:          -
     - If Success:       EXIT_SUCCESS
 
 */
-int print_job_info(pid_t pid, const char* cmdline)
+static int print_job_info(pid_t pid, const char* cmdline)
 {
 	printf("[%d]: '%s'\n", pid, cmdline);
     return EXIT_SUCCESS;
@@ -118,16 +119,15 @@ int print_job_info(pid_t pid, const char* cmdline)
     - line:             input line (from user)  
 
     Locals:
-
     -
 
     Return:
 
-    - If Fail:
-    - If Success:
+    - If Fail:          -
+    - If Success:       -
 
 */
-bool is_background(char* line)
+static bool is_background(char* line)
 {
     size_t length = strlen(line);
     return line[length-1] == '&';
@@ -136,7 +136,8 @@ bool is_background(char* line)
 /* Reading the command from user input:
 
     Parameters:
-    -
+    
+    - command_line:     user input
 
     Locals:
 
@@ -149,10 +150,10 @@ bool is_background(char* line)
 
     - If Fail:    EXIT_FAILURE
     - If Succes:  char* command_line
-    - If EOF:     exit program
+    - If EOF:     exit programm
 
 */
-int read_command(char** command_line)
+static int read_command(char** command_line)
 {
     int index = 0;
     int c;
@@ -160,7 +161,7 @@ int read_command(char** command_line)
 
     *command_line = (char*) malloc(sizeof(char) * buffer_size);
     if(*command_line == NULL) {
-        fprintf(stderr, "Memory allocation goes wrong.\n");
+        perror("Memory allocation goes wrong.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -173,7 +174,7 @@ int read_command(char** command_line)
             (*command_line)[index] = '\0';
             // Return failure, if line is too long
 			if(index >= MAX_LINE_LENGTH) {
-				fprintf(stderr, "Input line too long.\n");
+				perror("Input line too long.\n");
 				return EXIT_FAILURE;
 			}
 			if(index == 0) {
@@ -183,7 +184,7 @@ int read_command(char** command_line)
         }
         // Exit at EOF
         if(c == EOF) {
-            fprintf(stdout, "exit\n");
+            printf("exit\n");
             exit(EXIT_SUCCESS);
         }
         // Ignore leading spaces
@@ -202,7 +203,7 @@ int read_command(char** command_line)
             buffer_size += BUFFER_SIZE;
             *command_line = (char*) realloc(*command_line, buffer_size);
             if(command_line == NULL) {
-                fprintf(stderr, "Memory allocation goes wrong.\n");
+                perror("Memory allocation goes wrong.\n");
                 exit(EXIT_FAILURE);
             }
         }
@@ -210,12 +211,12 @@ int read_command(char** command_line)
     }
 }
 
-
 /* Parse parameters from input line:
 
     Parameters:
 
     - line:             input line (from user)
+    - type:             if background process, true, else false
 
     Locals:
 
@@ -223,6 +224,7 @@ int read_command(char** command_line)
     - token:            single word from input line
     - delimit:          array of delimiters for strtok
     - type:             background process? -> '&' at last position
+    - index:            parameter array index 
 
     Return:             
     
@@ -230,16 +232,16 @@ int read_command(char** command_line)
     - If Succes:        char** parameters
 
 */
-char** get_parameters(char* line, bool type)
+static char** get_parameters(char* line, bool type)
 {
     int buffer_size = TOKEN_BUFFER_SIZE;
     int index = 0;
     char* token;
-    char delimit[6] = " \t\r\n\v";
+    char delimit[6] = " \t";
 
     char** parameters = (char**) malloc(buffer_size * sizeof(char*));
     if(parameters == NULL) {
-        fprintf(stderr, "Memory allocation goes wrong.\n");
+        perror("Memory allocation goes wrong.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -253,7 +255,7 @@ char** get_parameters(char* line, bool type)
             buffer_size += TOKEN_BUFFER_SIZE;
             parameters = realloc(parameters, buffer_size * sizeof(char*));
             if(parameters == NULL) {
-                fprintf(stderr, "Memory allocation goes wrong.\n");
+                perror("Memory allocation goes wrong.\n");
                 exit(EXIT_FAILURE);
             }
         }
@@ -272,13 +274,12 @@ char** get_parameters(char* line, bool type)
     return parameters;
 }
 
-
 /* Execute inputed command:
 
     Parameters:
 
     - parameters:       parsed user input
-    - type:             background process? 
+    - type:             background process? => true
     - _pid:             PID of forked process
 
     Locals:
@@ -289,8 +290,9 @@ char** get_parameters(char* line, bool type)
     
     - If Fail:          EXIT_FAILURE
     - If Succes:        int wait_status
+
 */
-int execute_command(char** parameters, bool type, pid_t* _pid)
+static int execute_command(char** parameters, bool type, pid_t* _pid)
 {
     int wait_status;
 
@@ -305,17 +307,17 @@ int execute_command(char** parameters, bool type, pid_t* _pid)
     *_pid = fork();
     if (*_pid == -1) {
         // Error forking
-        fprintf(stderr, "Unable to fork.\n");
+        perror("Unable to fork.\n");
         exit(EXIT_FAILURE);
     } 
     else if (*_pid == 0) {
         // Child process:   Execute command
         if (execvp(parameters[0], parameters) == -1)
-            fprintf(stderr, "exec: No such file or directory\n");
+            perror("exec: No such file or directory\n");
         return EXIT_FAILURE;
     } 
     else {
-        // Parent process:  Wait for child
+        // Parent process:  Wait for child, if foreground process
         if(type) {
             return STATUS_BACKGROUND;
         } 
@@ -332,18 +334,20 @@ int execute_command(char** parameters, bool type, pid_t* _pid)
 /* find, print and remove all Zombies in plist
 
     Parameters:
+    -
 
     Locals:
 
-    - wstatus:      status of process
-    - w:            process id
+    - wstatus:          status of process
+    - w:                process id
 
     Return:             
     
     - If Fail:          EXIT_FAILURE
     - If Succes:        EXIT_SUCCESS
+
 */
-int cleanup_zombies() 
+static int cleanup_zombies() 
 {
 	int wstatus;
 	int w = waitpid(-1, &wstatus, WNOHANG);
@@ -352,10 +356,10 @@ int cleanup_zombies()
 		char pid_cmd[MAX_LINE_LENGTH];
 		if(WIFEXITED(wstatus)) {
 			if(removeElement(w, pid_cmd, MAX_LINE_LENGTH) == -1) {
-				fprintf(stderr, "Unable to remove Element[%d].\n", w);
+				perror("Unable to remove Element\n");
 				return EXIT_FAILURE;
 			}
-			fprintf(stdout, "Exisstatus [ %s ] = %d\n", pid_cmd, wstatus);
+			printf("Exisstatus [ %s ] = %d\n", pid_cmd, wstatus);
 		}	
 		w = waitpid(-1, &wstatus, WNOHANG);
 	}
@@ -375,8 +379,9 @@ int cleanup_zombies()
     - working_dir:      working directory
     - parameters:       array of single words in user input
     - status:           status of processes; abort programm at error 
-    - job_type:         background process?   
+    - job_type:         background process? Default: False => Forground process
     - pid:              PID of Backgroundprocess
+
 */
 int main(int argc, char **argv)
 {
@@ -392,7 +397,7 @@ int main(int argc, char **argv)
     do {
         // print working directory
         working_dir = get_working_dir();
-        fprintf(stdout, "%s: ", working_dir);
+        printf("%s: ", working_dir);
 
         // read user input
         if(read_command(&command_line) == EXIT_FAILURE) {
@@ -403,7 +408,7 @@ int main(int argc, char **argv)
         // copy user input (because strtok)
         _line = (char*) malloc(strlen(command_line) * sizeof(char));
         if (_line == NULL) {
-            fprintf(stderr, "Memory allocation goes wrong.\n");
+            perror("Memory allocation goes wrong.\n");
             return EXIT_FAILURE;
         }
         strcpy(_line, command_line);
@@ -418,7 +423,7 @@ int main(int argc, char **argv)
            status code -42 target the background process. */
         status = execute_command(parameters, job_type, &pid);
         if(status != STATUS_BACKGROUND) {
-			fprintf(stdout, "Exisstatus [ %s ] = %d\n", command_line, status);
+			printf("Exisstatus [ %s ] = %d\n", command_line, status);
 		}
 		else {
 			insertElement(pid, command_line);
@@ -432,7 +437,12 @@ int main(int argc, char **argv)
         free(command_line);
         free(_line);
         free(parameters);
-    // Stop at error
+
+        if(EOF == fflush(stdout)) {
+		    perror("fflush");
+		    exit(EXIT_FAILURE);
+	    }
+        
     } while (true);
 
     return EXIT_SUCCESS;
