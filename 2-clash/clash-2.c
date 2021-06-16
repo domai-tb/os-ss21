@@ -1,13 +1,3 @@
-/* TODO-List: 
-
-	(- walkList callback return nutzen)
-
-    Tests:
-    echo abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789 abc123456789
-	sleep 10 &
-*/
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -173,7 +163,7 @@ static int read_command(char** command_line)
         if(c == '\n') {
             (*command_line)[index] = '\0';
             // Return failure, if line is too long
-			if(index >= MAX_LINE_LENGTH) {
+			if(index > MAX_LINE_LENGTH) {
 				perror("Input line too long.\n");
 				return EXIT_FAILURE;
 			}
@@ -184,7 +174,10 @@ static int read_command(char** command_line)
         }
         // Exit at EOF
         if(c == EOF) {
-            printf("exit\n");
+			if(EOF == fflush(stdout)) {
+				perror("fflush");
+				exit(EXIT_FAILURE);
+			}
             exit(EXIT_SUCCESS);
         }
         // Ignore leading spaces
@@ -237,8 +230,8 @@ static char** get_parameters(char* line, bool type)
     int buffer_size = TOKEN_BUFFER_SIZE;
     int index = 0;
     char* token;
-    char delimit[6] = " \t";
-
+    char delimit[3] = " \t";
+	
     char** parameters = (char**) malloc(buffer_size * sizeof(char*));
     if(parameters == NULL) {
         perror("Memory allocation goes wrong.\n");
@@ -262,7 +255,6 @@ static char** get_parameters(char* line, bool type)
 
         token = strtok(NULL, delimit);
     }
-
     // if background process, overwrite '&'
     if(type) {
         parameters[index-1] = NULL;
@@ -312,9 +304,10 @@ static int execute_command(char** parameters, bool type, pid_t* _pid)
     } 
     else if (*_pid == 0) {
         // Child process:   Execute command
-        if (execvp(parameters[0], parameters) == -1)
-            perror("exec: No such file or directory\n");
-        return EXIT_FAILURE;
+        if (execvp(parameters[0], parameters) == -1) {
+            perror("exec");
+			return EXIT_FAILURE;
+        }
     } 
     else {
         // Parent process:  Wait for child, if foreground process
@@ -437,11 +430,6 @@ int main(int argc, char **argv)
         free(command_line);
         free(_line);
         free(parameters);
-
-        if(EOF == fflush(stdout)) {
-		    perror("fflush");
-		    exit(EXIT_FAILURE);
-	    }
         
     } while (true);
 
