@@ -8,9 +8,9 @@
 /*static void die(const char *s) {
     perror(s);
     exit(EXIT_FAILURE);
-}*/
+}
 
-/*static int parse_positive_int_or_die(char *str) {
+static int parse_positive_int_or_die(char *str) {
     errno = 0;
     char *endptr;
     long x = strtol(str, &endptr, 10);

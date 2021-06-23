@@ -1,0 +1,4 @@
+gcc -c mach.c
+gcc -c queue.c
+
+gcc -o mach mach.o queue.o run.o sem.o
