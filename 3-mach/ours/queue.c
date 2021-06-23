@@ -1,22 +1,61 @@
+#include <stdlib.h>
 #include "queue.h"
 
-// TODO: includes, structs, variables
+static struct node {
+	char* cmd;
+	char* out;
+	int flags;
+	struct node *next;
+} *head, *tail;
 
-int queue_init(void) {
-    // TODO: implement me
-    return -1;
+int queue_init(void) {//Checke nicht ganz was hier eigentlich gemacht werden sollte
+	head = NULL;
+	tail = NULL;
+    return 0;
 }
 
 void queue_deinit(void) {
-    // TODO: implement me
+    while(tail != NULL)
+    {
+		struct node *tmp = tail;
+		tail = tail->next;
+		free(tmp);
+	}
 }
 
 int queue_put(char *cmd, char *out, int flags) {
-    // TODO: implement me
-    return -1;
+    struct node *new_node = malloc(sizeof(struct node));
+    if(new_node == NULL)
+		return -1;
+	new_node->cmd = cmd;
+	new_node->out = out;
+	new_node->flags = flags;
+	new_node->next = NULL;
+	
+	if(tail != NULL)
+	{
+		tail->next = new_node;
+	}
+	
+	tail = new_node;
+	
+	if(head == NULL) {
+		head = new_node;
+	}
+    return 0;
 }
 
 int queue_get(char **cmd, char **out, int *flags) {
-    // TODO: implement me
-    return -1;
+    if(head == NULL)
+		return -1;
+	struct node* tmp = head;
+	*cmd = tmp->cmd;
+	*out = tmp->out;
+	*flags = tmp->flags;
+	
+	head = head->next;
+	if(head == NULL)
+		tail = NULL;
+	free(tmp);
+    return 0;
 }
