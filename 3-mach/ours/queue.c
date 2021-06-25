@@ -8,7 +8,9 @@ static struct node {
 	struct node *next;
 } *head, *tail;
 
-int queue_init(void) {//Checke nicht ganz was hier eigentlich gemacht werden sollte
+int queue_init(void) {
+	//Checke nicht ganz was hier eigentlich gemacht werden sollte
+	/* ==> initialisiere eine leere queue; also würde ich sagen, dass passt so */
 	head = NULL;
 	tail = NULL;
     return 0;
