@@ -1,8 +1,18 @@
+/*
+        TODO:
+
+        - limit thread to max_thread
+        - execute group by group 
+        - outout in seperate thread
+
+*/
+
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <pthread.h>
+#include <string.h>
 
 #include "run.h"
 #include "queue.h"
@@ -14,25 +24,49 @@ static void die(const char *s) {
     exit(EXIT_FAILURE);
 }
 
+// More than one argument at work_routine
+struct thread_arguments
+{
+    char* command;
+    char* command_output;
+};
+
 /** 
- * Execute command and command to queue.
+ * Execute command and add it to queue.
  * 
  * The purpose of this function is to parse the
  * "run_cmd" to void*, because "pthread_create"
  * can handly void* only.
  * 
  */
-static void* routine(const char* cmd)
+static void* work_routine(void* arguments)
 {
-    char* cmd_out = NULL;
+    // parsing struct 
+    struct thread_arguments *args = (struct thread_arguments*) arguments;
+
+    //printf("{Work-Routine-Beginn} Command: [%s] Out: [%s]\n", (*args).command, (*args).command_output);
 
     // execute command
-    if (run_cmd(cmd, &cmd_out) < 0)
+    if (run_cmd((*args).command, &((*args).command_output)) < 0)
         die("run_cmd");
 
-    // add thread to queue
-    /* keine Ahnung was die flags sind... */
-    queue_put(cmd, cmd_out, 0);
+    // add command and output to queue
+    if (queue_put((*args).command, (*args).command_output, 0) != 0)
+        die("queue_put");
+
+    //printf("{Work-Routine-End} Command: [%s] Out: [%s]\n", (*args).command, (*args).command_output);
+
+    return NULL;
+}
+
+static void create_worker_thread_and_execute_command(char* command)
+{
+    pthread_t worker_thread;
+
+    // create work thread and execute command
+    if (pthread_create(&worker_thread, NULL, &work_routine, command) != 0)
+        die("pthread_create");
+    pthread_detach(worker_thread);
 }
 
 static int parse_positive_int_or_die(char *str) {
@@ -59,17 +93,23 @@ static int parse_positive_int_or_die(char *str) {
 }
 
 int main(int argc, char **argv) {
+
+    char* path_to_file = argv[2];
+    char file_line[MAX_LINE + 1];
+    FILE* file = fopen(path_to_file, "r");
+
+    char c; // placeholder character
+
+    int max_threads = parse_positive_int_or_die(argv[1]);
+
+    // handle wrong usage
     if(argc != 3)
     {
 		fprintf(stderr, "usage: ./mach <anzahl threads> <mach-datei>\n");
 		return EXIT_FAILURE;
 	}
-	
-	int max_threads = parse_positive_int_or_die(argv[1]);
-	
-	char* path_to_file = argv[2];
-	char file_line[MAX_LINE + 1];
-	FILE* file = fopen(path_to_file, "r");
+
+    // can't open file
 	if(!file)
 		die("File");
 	
@@ -81,38 +121,27 @@ int main(int argc, char **argv) {
     }
 
     // reading commands from mach-file
-	while (fgets(file_line, MAX_LINE, file) != NULL) {
-		printf("%s\n", file_line);
+	while (fgets(file_line, MAX_LINE, file) != NULL) 
+    {
+        struct thread_arguments args;
 
         // MAX_LINE exceeded
         size_t length = strlen(file_line);	
 		if(length == MAX_LINE && file_line[MAX_LINE-1] != '\n')
         {
             fprintf(stderr, "Input too long.\n");
-            int c;
             while ((c = fgetc(stdin)) != EOF && c != '\n');
             continue;
 		} 
 
-        // create thread
-        /* Es müssse max_thread oder weniger  threads erstellt werden
-            ==> for loop? 
-            ==> file_line in array speichern und so viele thread erstellen,
-                wie array einträge hat?
-        */
-        pthread_t thread_1;
-        if (pthread_create(&thread_1, NULL, &routine, file_line) != 0)
-            die("pthread_create");
+        args.command = file_line;
+        args.command_output = NULL;
+        create_worker_thread_and_execute_command((void*) &args);
+        //printf("{While-Loop} Command: [%s] Out: [%s]\n", args.command, args.command_output);
+    }
 
-        // wait for thread
-        /* Nachdem alle commands einer Gruppe ausgeführt wurden, soll auf
-           alle Thread gewartet werden. Sollte mehr commands als "max_threads"
-           in einer Gruppe sein, müssen manche Thread wieder verwendet werden.
-        */
-        if (pthread_join(thread_1, NULL) != 0)
-            die("pthread_join");
-	}
-		
     printf("Test %d\n", max_threads);
-    return EXIT_SUCCESS;
+
+    // wait for all thread
+    pthread_exit(EXIT_SUCCESS);
 }
