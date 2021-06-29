@@ -94,21 +94,24 @@ static int parse_positive_int_or_die(char *str) {
 
 int main(int argc, char **argv) {
 
-    char* path_to_file = argv[2];
+    char* path_to_file;
     char file_line[MAX_LINE + 1];
-    FILE* file = fopen(path_to_file, "r");
+    FILE* file;
 
     char c; // placeholder character
-
-    int max_threads = parse_positive_int_or_die(argv[1]);
-
+    int max_threads;
+    
     // handle wrong usage
     if(argc != 3)
     {
 		fprintf(stderr, "usage: ./mach <anzahl threads> <mach-datei>\n");
 		return EXIT_FAILURE;
 	}
-
+	//"parse" args
+	max_threads = parse_positive_int_or_die(argv[1]);
+	path_to_file = argv[2];
+	
+	file = fopen(path_to_file, "r");
     // can't open file
 	if(!file)
 		die("File");
