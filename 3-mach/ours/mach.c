@@ -134,13 +134,19 @@ int main(int argc, char **argv) {
             continue;
 		} 
 
+        // execute command in a seperate thread
         args.command = file_line;
         args.command_output = NULL;
         create_worker_thread_and_execute_command((void*) &args);
-        //printf("{While-Loop} Command: [%s] Out: [%s]\n", args.command, args.command_output);
+
+        printf("Command: [%s] Output: [%s]\n", args.command, args.command_output);
+        if(EOF == fflush(stdout))
+            die("fflush");
     }
 
-    printf("Test %d\n", max_threads);
+    printf("Maximale Anzahl an Threads: %d\n", max_threads);
+    if(EOF == fflush(stdout))
+        die("fflush");
 
     // wait for all thread
     pthread_exit(EXIT_SUCCESS);
