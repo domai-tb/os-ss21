@@ -1,0 +1,8 @@
+10366602	Rouven Bröckelmann
+10366490	Tim Barsch
+
+[comment] Punktabzug nach Datei:
+[comment] aufgabe2/T2/G2.8/Makefile    2.5
+[comment] aufgabe2/T2/G2.8/clash-2.c   12.5
+[comment] aufgabe2/T2/G2.8/plist.c     0.5
+[comment] Gesamtabzug:                 15.5
