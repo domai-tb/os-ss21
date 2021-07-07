@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 /// Magic value for occupied memory chunks.
 #define MAGIC ((void*)0xbaadf00d)
@@ -58,39 +59,26 @@ void printList(void) {
 void *malloc (size_t size) {
 
 	errno = 0;
+
+	if (size == 0) return NULL;
 	
-	// Search for free memory in Heap (static char memory)
-		// TODO
-		/* if ( out of memory )
-		{
-			errno = ENOMEM; 		// errno from man page
-			return NULL;
-		} */
+	// get first free memmory in heap
+	struct mblock* current_block = (struct mblock*) memory;
+	while (true) {
+		if (current_block != MAGIC) {
+			if (current_block->size >= size) {
+				struct mblock* new_mblock = (struct mblock*) (size + sizeof(struct mblock));
+				current_block->next = new_mblock;
+				current_block->size = size;
+				void* allocated_memory = (void*) current_block->memory;
+				current_block = MAGIC;
+				return allocated_memory;
+			}
+		} 
+		if (current_block->next == NULL) break;
+		current_block = current_block->next;
+	}
 	
-
-	// create new mblock and initialize
-		// TODO: create size-Bytes behind last block
-	struct mblock new_block;
-	new_block.next = NULL;
-	new_block.size = sizeof(struct mblock);
-
-	// mark head as used (magic) and update size
-		/* TODO: declare block with magic adress:
-				- head->memory = MAGIC: wrong
-				- head = MAGIC: doesn't make sens
-				- &head = MAGIC: wrong
-				- ...
-		*/
-	head->size = size;
-
-	// save memory pointer
-	void* allocated_memory = head->memory;
-
-	// move head to new block
-	head = &new_block;
-
-	// return pointer to allocated memory
-	return allocated_memory;
 
 	return NULL;
 }
