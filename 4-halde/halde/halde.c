@@ -26,6 +26,8 @@ static char memory[SIZE];
 /// Pointer to the first element of the free-memory list.
 static struct mblock *head;
 
+static bool is_heap_initialized = false;
+
 /// Helper function to visualise the current state of the free-memory list.
 void printList(void) {
 	struct mblock *lauf = head;
@@ -59,28 +61,49 @@ void printList(void) {
 void *malloc (size_t size) {
 
 	errno = 0;
+	void* return_address = NULL;
+	struct mblock* current_mblock;
+	struct mblock* new_mblock;
 
-	if (size == 0) return NULL;
-	
-	// get first free memmory in heap
-	struct mblock* current_block = (struct mblock*) memory;
-	while (true) {
-		if (current_block != MAGIC) {
-			if (current_block->size >= size) {
-				struct mblock* new_mblock = (struct mblock*) (size + sizeof(struct mblock));
-				current_block->next = new_mblock;
-				current_block->size = size;
-				void* allocated_memory = (void*) current_block->memory;
-				current_block = MAGIC;
-				return allocated_memory;
-			}
-		} 
-		if (current_block->next == NULL) break;
-		current_block = current_block->next;
+	// init heap 
+	if (!is_heap_initialized) {
+		head = (struct mblock*) memory;
+		head->next = NULL;
+		head->size = SIZE;
+		is_heap_initialized = true;
+	}
+
+	if (size == 0) { return return_address; }
+
+	// search for next free memory block and allocate memory
+	current_mblock = (struct mblock*) &head;
+	while (true)
+	{
+		if (current_mblock->next != MAGIC && current_mblock->size >= size) 
+		{
+			// create new memory block and initialize
+			new_mblock = (struct mblock*) ((size_t)current_mblock + size);
+			new_mblock->next = NULL;
+			new_mblock->size = current_mblock->size - size - 2*sizeof(struct mblock);
+			
+			// move head
+			head = new_mblock;
+
+			// update current block and save memory address
+			current_mblock->size = size;
+			current_mblock->next = MAGIC;
+			return_address = (void*) current_mblock->memory;
+			current_mblock->next = MAGIC;
+			break;
+		}
+		if (current_mblock->next == NULL) {
+			errno = ENOMEM;			// cannot allocate memory
+			break;
+		}
+		current_mblock = current_mblock->next;
 	}
 	
-
-	return NULL;
+	return return_address;
 }
 
 void free (void *ptr) {
