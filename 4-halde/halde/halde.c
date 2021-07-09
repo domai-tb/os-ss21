@@ -59,7 +59,7 @@ void printList(void) {
 }
 
 /*
-	Maybe in some situations incorrect. Not detailed tested.
+	TODO: Debugging with GDB - Segmentation fault in some usecases
 */
 void *malloc (size_t size) {
 
@@ -117,18 +117,15 @@ void free (void *ptr) {
 	if (ptr != NULL)
 	{
 		mblock = (struct mblock*) ((size_t) ptr - sizeof(struct mblock));
-		if (mblock->next == MAGIC) {
-			mblock->next = head;
-			head = mblock;
-		}
+		if (mblock->next != MAGIC)
+			abort();
+		mblock->next = head;
+		head = mblock;
 	}
 	
 	return; 
 }
 
-/*
-	Maybe in some situations incorrect. Not detailed tested.
-*/
 void *realloc (void *ptr, size_t size) {
 	
 	errno = 0;
@@ -136,12 +133,10 @@ void *realloc (void *ptr, size_t size) {
 	size_t copy_size;
 
 	if (ptr == NULL) 
-	{
-		errno = ENOMEM;				// cannot allocate memory
-		return_address = NULL;
-	}
+		return_address = malloc(size);
 	else
 	{
+		// is size = 0 => realloc <=> free
 		if (size == 0) {
 			free(ptr);
 			return_address = NULL;
@@ -150,6 +145,7 @@ void *realloc (void *ptr, size_t size) {
 			return_address = malloc(size);
 			if (return_address != NULL) 
 			{
+				// copy old memory to new allocated memory
 				copy_size = *(size_t*)((size_t)ptr - 8);
 				if (size <= copy_size) copy_size = size;
 				memcpy(return_address, ptr, copy_size);
@@ -161,9 +157,6 @@ void *realloc (void *ptr, size_t size) {
 	return return_address;
 }
 
-/*
-	Maybe in some situations incorrect. Not detailed tested.
-*/
 void *calloc (size_t nmemb, size_t size) {
 	
 	errno = 0;
@@ -173,6 +166,7 @@ void *calloc (size_t nmemb, size_t size) {
 	if (size == 0 || nmemb == memory_size / size)
 	{
 		return_address = malloc(memory_size);
+		// init with 0x0
 		if (return_address != NULL) 
 			memset(return_address, 0, size);
 	}
