@@ -58,6 +58,9 @@ void printList(void) {
 	write(STDERR_FILENO, "\n", 1);
 }
 
+/*
+	Maybe in some situations incorrect. Not detailed tested.
+*/
 void *malloc (size_t size) {
 
 	errno = 0;
@@ -73,7 +76,8 @@ void *malloc (size_t size) {
 		is_heap_initialized = true;
 	}
 
-	if (size == 0) { return return_address; }
+	if (size == 0)
+		return return_address;
 
 	// search for next free memory block and allocate memory
 	current_mblock = (struct mblock*) &head;
@@ -113,19 +117,70 @@ void free (void *ptr) {
 	if (ptr != NULL)
 	{
 		mblock = (struct mblock*) ((size_t) ptr - sizeof(struct mblock));
-		mblock->next = head;
-		head = mblock;
+		if (mblock->next == MAGIC) {
+			mblock->next = head;
+			head = mblock;
+		}
 	}
 	
 	return; 
 }
 
+/*
+	Maybe in some situations incorrect. Not detailed tested.
+*/
 void *realloc (void *ptr, size_t size) {
-	// TODO: implement me!
-	return NULL;
+	
+	errno = 0;
+	void* return_address;
+	size_t copy_size;
+
+	if (ptr == NULL) 
+	{
+		errno = ENOMEM;				// cannot allocate memory
+		return_address = NULL;
+	}
+	else
+	{
+		if (size == 0) {
+			free(ptr);
+			return_address = NULL;
+		}
+		else {
+			return_address = malloc(size);
+			if (return_address != NULL) 
+			{
+				copy_size = *(size_t*)((size_t)ptr - 8);
+				if (size <= copy_size) copy_size = size;
+				memcpy(return_address, ptr, copy_size);
+				free(ptr);
+			}
+		}
+	}
+
+	return return_address;
 }
 
+/*
+	Maybe in some situations incorrect. Not detailed tested.
+*/
 void *calloc (size_t nmemb, size_t size) {
-	// TODO: implement me!
-	return NULL;
+	
+	errno = 0;
+	size_t memory_size = nmemb * size;
+	void* return_address;
+
+	if (size == 0 || nmemb == memory_size / size)
+	{
+		return_address = malloc(memory_size);
+		if (return_address != NULL) 
+			memset(return_address, 0, size);
+	}
+	else 
+	{
+		errno = ENOMEM; 		// cannot allocate memory
+		return_address = NULL;
+	}
+	
+	return return_address;
 }
