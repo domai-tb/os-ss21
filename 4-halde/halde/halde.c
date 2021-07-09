@@ -107,18 +107,17 @@ void *malloc (size_t size) {
 }
 
 void free (void *ptr) {
-	
-	// find mblock of memory: mbp pointer
-		// TODO
 
-	// check for validity (is magic?)
-		// TODO
-	
-	// set old mblock->next to head
-		// TODO
+	struct mblock* mblock;
 
-	// set head to mbp 
-		// TODO
+	if (ptr != NULL)
+	{
+		mblock = (struct mblock*) ((size_t) ptr - sizeof(struct mblock));
+		mblock->next = head;
+		head = mblock;
+	}
+	
+	return; 
 }
 
 void *realloc (void *ptr, size_t size) {
