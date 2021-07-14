@@ -1,5 +1,5 @@
-#															  for debugging
-CFLAGS = -std=c11 -pedantic -Wall -Werror -D_XOPEN_SOURCE=700 -ggdb -O0
+                                                              # for debugging
+CFLAGS = -std=c11 -pedantic -Wall -Werror -D_XOPEN_SOURCE=700 # -ggdb -O0
 
 all: test test-ref
 
